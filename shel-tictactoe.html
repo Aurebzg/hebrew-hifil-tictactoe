@@ -528,4 +528,80 @@
 
         cell.innerHTML = `
           <div class="content">
-            <div class="front">${car
+            <div class="front">${card.pronoun}</div>
+            <div class="back">
+              <div>
+                <div class="verb">${card.form}</div>
+                <div class="choice">
+                  <button class="correct" aria-label="נכון">נכון</button>
+                  <button class="wrong" aria-label="לא נכון">לא נכון</button>
+                </div>
+              </div>
+            </div>
+            <div class="mark" aria-hidden="true"></div>
+          </div>
+        `;
+
+        // reveal on click if not already chosen
+        cell.addEventListener('click', (e) => {
+          if (gameOver) return;
+          if (cell.classList.contains('disabled')) return;
+          // don't block buttons
+          if (e.target && (e.target.matches('.correct') || e.target.matches('.wrong'))) return;
+          cell.classList.add('revealed');
+        });
+
+        const correctBtn = cell.querySelector('.correct');
+        const wrongBtn   = cell.querySelector('.wrong');
+
+        // נכון → square for currentPlayer
+        correctBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (gameOver) return;
+          if (cell.classList.contains('disabled')) return;
+          claimSquare(idx, currentPlayer, cell);
+        });
+
+        // לא נכון → square for the opponent of currentPlayer
+        wrongBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (gameOver) return;
+          if (cell.classList.contains('disabled')) return;
+          const other = opponentOf(currentPlayer);
+          claimSquare(idx, other, cell);
+        });
+
+        boardEl.appendChild(cell);
+      });
+    }
+
+    function initGame(){
+      hideWinnerBanner();
+
+      // set starter for this game
+      currentPlayer = nextStarter;
+      // flip starter for next game
+      nextStarter = opponentOf(nextStarter);
+
+      // reset round state
+      boardState = Array(9).fill(null);
+      gameOver = false;
+
+      buildBoard();
+      updateStatus();
+      updateScoreboard();
+    }
+
+    resetBtn.addEventListener('click', () => {
+      initGame();
+    });
+
+    winnerClose.addEventListener('click', () => {
+      hideWinnerBanner();
+    });
+
+    // first load
+    initGame();
+  </script>
+</body>
+</html>

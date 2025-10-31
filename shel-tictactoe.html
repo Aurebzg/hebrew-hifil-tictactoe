@@ -348,10 +348,10 @@
         <ul>
           <li>לחצו על תא כדי לחשוף: שלי / שלךָ / שלוֹ וכו׳.</li>
           <li>"נכון" = התא לשחקן שתורו עכשיו.</li>
-          <li>"לא נכון" = התא עובר לשחקן השני.</li>
+          <li>"לא נכון" = התא לשחקן השני.</li>
           <li>אחרי סימון תא, התור מתחלף אוטומטית.</li>
           <li>מי שמקבל שלושה ברצף מנצח ומקבל נקודה.</li>
-          <li>במשחק חדש: הלוח מתערבב, מי שפותח מתחלף (X→O→X→...).</li>
+          <li>במשחק חדש: הלוח מתערבב, פותח המשחק מתחלף (X→O→X→...).</li>
         </ul>
       </details>
     </div>
@@ -365,7 +365,7 @@
   </div>
 
   <script>
-    // pronouns and their "של־" forms
+    // pronouns -> possessive forms
     const POSESSION_FORMS = {
       "אני":   "שֶׁלִּי",
       "אתה":  "שֶׁלְּךָ",
@@ -379,13 +379,13 @@
       "הן":   "שֶׁלָּהֶן"
     };
 
-    // board state
+    // game state
     let boardState = Array(9).fill(null); // 'X' | 'O' | null
-    let currentPlayer = 'X'; // whose turn RIGHT NOW
-    let nextStarter   = 'X'; // who will start NEXT GAME (we flip this each game)
+    let currentPlayer = 'X';  // whose turn it is right now
+    let nextStarter   = 'X';  // who will start the NEXT game (we flip this each game)
     let gameOver = false;
 
-    // scores across games
+    // scores
     let scoreX = 0;
     let scoreO = 0;
 
@@ -415,7 +415,6 @@
       return out;
     }
 
-    // returns 9 random pairs {pronoun, form}
     function pickNineRandomPairs(){
       const entries = Object.entries(POSESSION_FORMS);
       const shuffled = shuffleArray(entries);
@@ -467,9 +466,11 @@
 
     function endRound(winnerSymbol){
       gameOver = true;
+
       if (winnerSymbol === 'X') scoreX += 1;
       if (winnerSymbol === 'O') scoreO += 1;
       updateScoreboard();
+
       statusEl.innerHTML = '🎉 ניצחון ל־<span class="turn">' + winnerSymbol + '</span>!';
       showWinnerBanner(winnerSymbol);
     }
@@ -484,11 +485,11 @@
       }
     }
 
-    // claimSquare:
-    // symbol = who gets the square for THIS click (may be currentPlayer or opponent)
-    // then we advance the turn to the other player
+    // claimSquare: assign a symbol (X or O) to a cell and check for win/tie.
+    // IMPORTANT: this does NOT change turns anymore.
     function claimSquare(index, symbol, cell){
       boardState[index] = symbol;
+
       cell.classList.add('disabled');
       cell.classList.add('revealed');
 
@@ -497,7 +498,6 @@
       glyph.textContent = symbol;
       cell.querySelector('.mark').appendChild(glyph);
 
-      // check win right away
       const winLine = checkWin();
       if (winLine) {
         highlightWin(winLine);
@@ -505,13 +505,7 @@
         return;
       }
 
-      // check tie
       checkForTieIfNoWin();
-      if (gameOver) return;
-
-      // no win/tie → next turn
-      currentPlayer = opponentOf(currentPlayer);
-      updateStatus();
     }
 
     function buildBoard(){
@@ -542,11 +536,11 @@
           </div>
         `;
 
-        // reveal on click if not already chosen
+        // reveal cell on click (unless chosen or game over)
         cell.addEventListener('click', (e) => {
           if (gameOver) return;
           if (cell.classList.contains('disabled')) return;
-          // don't block buttons
+          // don't block the actual buttons
           if (e.target && (e.target.matches('.correct') || e.target.matches('.wrong'))) return;
           cell.classList.add('revealed');
         });
@@ -554,21 +548,36 @@
         const correctBtn = cell.querySelector('.correct');
         const wrongBtn   = cell.querySelector('.wrong');
 
-        // נכון → square for currentPlayer
+        // "נכון": give square to currentPlayer, then switch turns
         correctBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           if (gameOver) return;
           if (cell.classList.contains('disabled')) return;
-          claimSquare(idx, currentPlayer, cell);
+
+          const symbolForThisMove = currentPlayer; // current player's mark
+          claimSquare(idx, symbolForThisMove, cell);
+
+          // if game not over and not tie, rotate turn
+          if (!gameOver) {
+            currentPlayer = opponentOf(currentPlayer);
+            updateStatus();
+          }
         });
 
-        // לא נכון → square for the opponent of currentPlayer
+        // "לא נכון": give square to the OTHER player, then switch turns
         wrongBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           if (gameOver) return;
           if (cell.classList.contains('disabled')) return;
-          const other = opponentOf(currentPlayer);
+
+          const other = opponentOf(currentPlayer); // opponent gets the square
           claimSquare(idx, other, cell);
+
+          // if game not over and not tie, rotate turn
+          if (!gameOver) {
+            currentPlayer = opponentOf(currentPlayer);
+            updateStatus();
+          }
         });
 
         boardEl.appendChild(cell);
@@ -578,12 +587,12 @@
     function initGame(){
       hideWinnerBanner();
 
-      // set starter for this game
+      // pick who starts THIS game
       currentPlayer = nextStarter;
-      // flip starter for next game
+      // flip for NEXT game
       nextStarter = opponentOf(nextStarter);
 
-      // reset round state
+      // reset state
       boardState = Array(9).fill(null);
       gameOver = false;
 
